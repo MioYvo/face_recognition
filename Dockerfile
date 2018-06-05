@@ -2,8 +2,10 @@
 
 FROM python:3.6-slim-stretch
 
-RUN apt-get -y update
-RUN apt-get install -y --fix-missing \
+COPY . /root/face_recognition
+
+RUN apt-get -y update && \
+    apt-get install -y --fix-missing \
     build-essential \
     cmake \
     gfortran \
@@ -26,11 +28,14 @@ RUN apt-get install -y --fix-missing \
     zip \
     && apt-get clean && rm -rf /tmp/* /var/tmp/*
 
-RUN cd ~ && \
-    mkdir -p dlib && \
-    git clone -b 'v19.9' --single-branch https://github.com/davisking/dlib.git dlib/ && \
-    cd  dlib/ && \
-    python3 setup.py install --yes USE_AVX_INSTRUCTIONS
+RUN cd /root/face_recognition && \
+    pip3 install -r requirements.txt && \
+    # install dlib
+    cd /root/face_recognition/dlib && \
+    python3 setup.py install --yes USE_AVX_INSTRUCTIONS && \
+    # install face_recognition
+    cd /root/face_recognition && \
+    python3 setup.py install
 
 
 # The rest of this file just runs an example script.
@@ -40,11 +45,6 @@ RUN cd ~ && \
 # RUN cd /root/your_app_or_whatever && \
 #     pip3 install -r requirements.txt
 # RUN whatever_command_you_run_to_start_your_app
-
-COPY . /root/face_recognition
-RUN cd /root/face_recognition && \
-    pip3 install -r requirements.txt && \
-    python3 setup.py install
 
 CMD cd /root/face_recognition/examples && \
     python3 recognize_faces_in_pictures.py
