@@ -37,10 +37,10 @@ RUN apt-get -y update && \
 #     cd /root/face_recognition && \
 #     python3 setup.py install
 
-RUN pip3 install -r /root/face_recognition/requirements.txt && \
-    cd /root/face_recognition/dlib && \
+RUN cd /root/face_recognition/dlib && \
     python3 setup.py install --yes USE_AVX_INSTRUCTIONS && \
     cd /root/face_recognition && \
+    pip3 install -r requirements.txt && \
     python3 setup.py install
 
 # The rest of this file just runs an example script.
