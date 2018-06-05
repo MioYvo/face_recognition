@@ -28,15 +28,20 @@ RUN apt-get -y update && \
     zip \
     && apt-get clean && rm -rf /tmp/* /var/tmp/*
 
-RUN cd /root/face_recognition && \
-    pip3 install -r requirements.txt && \
-    # install dlib
+# RUN cd /root/face_recognition && \
+#     pip3 install -r requirements.txt && \
+#     # install dlib
+#     cd /root/face_recognition/dlib && \
+#     python3 setup.py install --yes USE_AVX_INSTRUCTIONS && \
+#     # install face_recognition
+#     cd /root/face_recognition && \
+#     python3 setup.py install
+
+RUN pip3 install -r /root/face_recognition/requirements.txt && \
     cd /root/face_recognition/dlib && \
     python3 setup.py install --yes USE_AVX_INSTRUCTIONS && \
-    # install face_recognition
     cd /root/face_recognition && \
     python3 setup.py install
-
 
 # The rest of this file just runs an example script.
 
