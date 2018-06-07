@@ -3,10 +3,10 @@
 
 import sys
 from pathlib import Path
-
-from web_service.sci import known_faces
-
 sys.path.extend([str(Path(__file__).absolute().parent.parent)])
+
+from web_service.sci.persist_face import FaceStore
+
 import tornado.web
 
 from web_service.urls import urls
@@ -18,7 +18,9 @@ from web_service.settings import (
 
 class Configurer(tornado.web.Application):
     def __init__(self):
-        self.known_faces = known_faces
+        self.face_store = FaceStore()
+        self.face_store.load_all(**self.face_store.load_kwargs)
+
         tornado.web.Application.__init__(self, urls, **APP_SETTINGS)
 
     def stop(self):

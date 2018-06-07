@@ -4,12 +4,9 @@ import asyncio
 from os import getenv
 from pathlib import Path
 
-# import docker
 from pytz import timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from tornado.platform.asyncio import AsyncIOMainLoop
-# from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 
 # ---------------------  APP  ---------------------
 
@@ -20,10 +17,10 @@ APP_PORT = int(getenv("APP_PORT", "8888"))
 RANDOM_FROM = float(getenv("RANDOM_FROM", 0.7))
 RANDOM_TO = float(getenv("RANDOM_TO", 1.0))
 
-
+TOLERANCE = float(getenv("TOLERANCE", 0.35))
 SETTINGS_FILE_PATH = Path(__file__).absolute()
 APP_PATH = SETTINGS_FILE_PATH.parent
-IMAGE_FOLDER_PATH = Path(SETTINGS_FILE_PATH.parent / "static")
+IMAGE_FOLDER_PATH = SETTINGS_FILE_PATH.parent / "static"
 
 # asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 # if AsyncIOMainLoop.initialized():
@@ -58,6 +55,10 @@ DB_CONNECT_STR = getenv('DB_CONNECT_STR', 'postgresql+psycopg2://postgres:postgr
 # CONN_POOL_RECYCLE_SECS = int(getenv("CONN_POOL_RECYCLE_SECS", 600))
 engine = create_engine(DB_CONNECT_STR, echo=DB_SQL_ECHO, encoding=DB_CONN_CHARSET)
 session_factory = sessionmaker(engine)
+
+
+# --------------------     SQLAlchemy    --------------------
+TEST_DB_FILE_PATH = APP_PATH / "sci" / "test.db"
 
 # -------------------- ap scheduler --------------------
 DEFAULT_INTERVAL_SECONDS = 30
