@@ -37,7 +37,10 @@ RUN apt-get -y update && \
 #     cd /root/face_recognition && \
 #     python3 setup.py install
 
-RUN cd /root/face_recognition/dlib && \
+RUN cd /root && \
+    git clone https://github.com/davisking/dlib.git && \
+    cd /root/dlib/dlib && mkdir build; cd build; cmake .. -DDLIB_USE_CUDA=0 -DUSE_AVX_INSTRUCTIONS=1; cmake --build . && \
+    cd /root/dlib && \
     python3 setup.py install --yes USE_AVX_INSTRUCTIONS && \
     cd /root/face_recognition && \
     pip3 install -r requirements.txt && \
