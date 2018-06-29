@@ -4,7 +4,8 @@ FROM python:3.6-slim-stretch
 
 COPY . /root/face_recognition
 
-RUN apt-get -y update && \
+RUN uname -ar && \
+    apt-get -y update && \
     apt-get install -y --fix-missing \
     build-essential \
     cmake \
@@ -37,8 +38,7 @@ RUN apt-get -y update && \
 #     cd /root/face_recognition && \
 #     python3 setup.py install
 
-RUN cd /root && \
-    git clone https://github.com/davisking/dlib.git && \
+RUN git clone -b 'v19.13' --single-branch https://github.com/davisking/dlib.git /root/dlib/ && \
     cd /root/dlib/dlib && mkdir build; cd build; cmake .. -DDLIB_USE_CUDA=0 -DUSE_AVX_INSTRUCTIONS=1; cmake --build . && \
     cd /root/dlib && \
     python3 setup.py install --yes USE_AVX_INSTRUCTIONS && \
