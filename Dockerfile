@@ -22,6 +22,7 @@ RUN uname -ar && \
     libjpeg-dev \
     liblapack-dev \
     libswscale-dev \
+    libboost-all-dev \
     pkg-config \
     python3-dev \
     python3-numpy \
