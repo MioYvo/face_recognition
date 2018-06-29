@@ -3,7 +3,7 @@
 
 import sys
 from pathlib import Path
-sys.path.extend([str(Path(__file__).absolute().parent.parent)])
+sys.path.extend([str(Path(__file__).absolute().parent.parent.parent)])
 
 from web_service.sci.persist_face import FaceStore
 

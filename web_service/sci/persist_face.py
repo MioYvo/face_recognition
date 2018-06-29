@@ -1,23 +1,23 @@
 # coding=utf-8
 # __author__ = 'Mio'
-import json
 import sys
+from math import ceil
 from pathlib import Path
-
-from web_service.settings import TEST_DB_FILE_PATH
-
 sys.path.extend([str(Path(__file__).absolute().parent.parent.parent)])
 import io
 import PIL
+import json
 import sqlite3
 from contextlib import contextmanager
 
+import cv2
 import piexif
 import numpy as np
 from tornado.log import app_log
 from PIL import Image, ImageDraw
 
 import face_recognition
+from web_service.settings import TEST_DB_FILE_PATH, IMAGE_FOLDER_PATH
 
 
 @contextmanager
@@ -37,27 +37,28 @@ def db_cursor(db_file_path):
 
 class Face(object):
     def __init__(self, file_path, name):
-        self.THUMB_WIDTH = 500
-        self.THUMB_HIGH = 500
+        self.CUBE_WIDTH = 500
+        self.THUMBNAIL_SIZE = (self.CUBE_WIDTH, ) * 2
         self.zero_distance = 0
         self.encoding_list_cache = None
         self.locations_cache = None
 
         self.file_path = file_path
         self.name = name
-        self.pil_img = self.prepare_pil_img(self.file_path)
-
+        self.origin_pil_img = self.prepare_pil_img(self.file_path)
+        self.origin_cube_img, self.ratio = self.cube_image()
+        # self.old_size = self.origin_pil_img.im.size
         # thumbnail image to speed up
-        self.thumbnail(self.pil_img)
+        self.thumb_pil_img = self.thumbnail()
 
     @property
     def locations(self):
-        # get locations
+        # get thumbnail locations
         # ensure image contains exact one face
         if self.locations_cache is None:
-            locations = face_recognition.face_locations(np.array(self.pil_img))
+            locations = face_recognition.face_locations(np.array(self.thumb_pil_img))
             if len(locations) != 1:
-                raise Exception(f"image must have one face, not {len(self.locations)}")
+                raise Exception(f"image must have one face, not {len(locations)}")
             self.locations_cache = locations
 
         return self.locations_cache
@@ -85,7 +86,7 @@ class Face(object):
                 elif orientation == 8:
                     pil_img = pil_img.rotate(90, expand=True)
 
-                # pil_img.save(filename, exif=exif_bytes)
+                # origin_pil_img.save(filename, exif=exif_bytes)
         return pil_img
 
     def prepare_pil_img(self, file_path):
@@ -111,17 +112,20 @@ class Face(object):
             im = im.convert(mode)
         return im
 
-    def thumbnail(self, image):
-        app_log.info(f"image shape: {image.im.size}")
-        if max(image.im.size) > max((self.THUMB_WIDTH, self.THUMB_HIGH)):
-            try:
-                image.thumbnail((self.THUMB_WIDTH, self.THUMB_HIGH))
-            except Exception as e:
-                app_log.error(e)
-                raise e
-            else:
-                app_log.info(f"thumbnail shape: {image.im.size}")
-                return image
+    def thumbnail(self):
+        app_log.info(f"image shape: {self.origin_cube_img.im.size}")
+        try:
+            thumb_cube_img = self.origin_cube_img.resize(self.THUMBNAIL_SIZE)
+        except Exception as e:
+            app_log.error(e)
+            raise e
+        else:
+            app_log.info(f"thumbnail shape: {thumb_cube_img.im.size}")
+            return thumb_cube_img
+
+    def thumbnail_cv2(self):
+        frame = np.array(self.origin_pil_img)[:, :, ::-1]
+        cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
 
     def __str__(self):
         return f"{self.name}: {self.zero_distance}"
@@ -130,23 +134,47 @@ class Face(object):
         return self.__str__()
 
     @property
+    def origin_location(self):
+        # true_origin_location = face_recognition.face_locations(np.array(self.origin_pil_img))
+        # app_log.info(f"true_origin_location: {true_origin_location}")
+        return [[t * self.ratio for t in location] for location in self.locations]
+
+    @property
     def encoding_list(self):
         """
         cal face encodings
         :return: list
         """
         if self.encoding_list_cache is None:
-            self.encoding_list_cache = face_recognition.face_encodings(np.array(self.pil_img), self.locations)[0]
+            app_log.info(f"origin_location: {self.origin_location}")
+            self.encoding_list_cache = face_recognition.face_encodings(np.array(self.origin_cube_img), self.origin_location)[0]
 
         return self.encoding_list_cache
 
-    def draw(self):
+    def cube_image(self):
+        max_old_size = max(self.origin_pil_img.size)
+
+        ratio = ceil(max_old_size / self.CUBE_WIDTH)
+
+        size = (ratio*self.CUBE_WIDTH, ) * 2
+
+        cube_im = Image.new('RGB', size)
+        cube_im.paste(self.origin_pil_img)
+        return cube_im, ratio
+
+    def save(self, saved_file_name=None):
+        if saved_file_name:
+            self.file_path = IMAGE_FOLDER_PATH/saved_file_name
+            self.origin_cube_img.save(self.file_path)
+            return self.file_path
+
+    def draw(self, show=False, saved_file_name=None):
         # face_landmarks_list = face_recognition.face_landmarks(self.image, self.locations)
-        face_landmarks_list = face_recognition.face_landmarks(np.array(self.pil_img), self.locations)
+        face_landmarks_list = face_recognition.face_landmarks(np.array(self.origin_cube_img), self.origin_location)
         face_landmarks = face_landmarks_list[0]
 
         # pil_image = Image.fromarray(self.image)
-        pil_image = self.pil_img
+        pil_image = self.origin_cube_img
         d = ImageDraw.Draw(pil_image, 'RGBA')
 
         # Make the eyebrows into a nightmare
@@ -167,14 +195,18 @@ class Face(object):
         d.line(face_landmarks['nose_bridge'])
 
         only_face = pil_image.crop((left, top, right, bottom))
-        only_face.show()
-        pil_image.show()
+        if show:
+            only_face.show()
+            pil_image.show()
+        if saved_file_name:
+            pil_image.save(IMAGE_FOLDER_PATH/saved_file_name)
 
 
 class OrmFace(object):
     """
     TODO: ORM of Face
     """
+
     def __init__(self, id_, name=None, encoding=None, file_path=None):
         self.id_ = id_
         self.name = name
@@ -187,16 +219,29 @@ class FaceStore(object):
         self.load_all = self.load_all_from_sqlite
         self.load_kwargs = load_kwargs if isinstance(load_kwargs, dict) else dict()
 
-        self.profiles = None
+        self.profiles = []
         self.encodings = []
 
     def load_all_from_sqlite(self):
+        before = len(self.profiles)
+        exists_id = 0 if not self.profiles else self.profiles[-1].id_
         with db_cursor(str(TEST_DB_FILE_PATH)) as cursor:
-            cursor.execute("SELECT id, name, encoding, file_path FROM pickled_faces ORDER BY id")
+            cursor.execute("SELECT id, name, encoding, file_path FROM pickled_faces WHERE id > {} ORDER BY id".format(exists_id))
             rows = cursor.fetchall()
-            self.profiles = [OrmFace(id_=row[0], name=row[1], encoding=row[2], file_path=row[3]) for row in rows]
-            self.encodings = [p.encoding for p in self.profiles]
-            app_log.info(f"{len(self.profiles)} loaded")
+            add_faces = [OrmFace(id_=row[0], name=row[1], encoding=row[2], file_path=row[3]) for row in rows]
+            self.profiles.extend(add_faces)
+            self.encodings.extend([face.encoding for face in add_faces])
+            app_log.info(f"add faces:{len(self.profiles) - before} ;total loaded faces: {len(self.profiles)}")
+
+    def add(self, face: Face):
+        with db_cursor(str(TEST_DB_FILE_PATH)) as cursor:
+            cursor.execute(f'INSERT INTO pickled_faces (name, encoding, file_path) VALUES ("{face.name}", "{json.dumps(list(face.encoding_list))}", "{face.file_path}")')
+            rows = cursor.fetchall()
+            app_log.info(list(rows))
+        self.load_all_from_sqlite()
+        return
+
+        # self.profiles.append(OrmFace())
 
 
 if __name__ == '__main__':

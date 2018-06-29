@@ -1,5 +1,5 @@
 import face_recognition
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 # This is an example of running face recognition on a single image
 # and drawing a box around each person that was identified.
@@ -45,15 +45,17 @@ for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodi
     # If a match was found in known_face_encodings, just use the first one.
     if True in matches:
         first_match_index = matches.index(True)
-        name = known_face_names[first_match_index]
+        # name = known_face_names[first_match_index]
+        name = r"刘如斯"
 
     # Draw a box around the face using the Pillow module
     draw.rectangle(((left, top), (right, bottom)), outline=(0, 0, 255))
 
     # Draw a label with a name below the face
-    text_width, text_height = draw.textsize(name)
+    font = ImageFont.truetype(font="/System/Library/Fonts/PingFang.ttc", size=10, encoding="utf-8")
+    text_width, text_height = draw.textsize(name, font=font)
     draw.rectangle(((left, bottom - text_height - 10), (right, bottom)), fill=(0, 0, 255), outline=(0, 0, 255))
-    draw.text((left + 6, bottom - text_height - 5), name, fill=(255, 255, 255, 255))
+    draw.text((left + 6, bottom - text_height - 5), name, fill=(255, 255, 255, 255), font=font)
 
 
 # Remove the drawing library from memory as per the Pillow docs

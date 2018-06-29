@@ -5,3 +5,5 @@ schema==0.6.7
 six==1.11.0
 SQLAlchemy==1.2.7
 tornado==5.0.2
+opencv-python==3.4.1.15
+piexif==1.0.13
