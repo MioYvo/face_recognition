@@ -28,6 +28,7 @@ RUN uname -ar && \
     python3-numpy \
     software-properties-common \
     zip \
+    libopenblas-dev \
     && apt-get clean && rm -rf /tmp/* /var/tmp/*
 
 # RUN cd /root/face_recognition && \
